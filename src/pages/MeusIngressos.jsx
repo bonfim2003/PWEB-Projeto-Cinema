@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Loader2, Check } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TicketCard from "@/components/ingressos/TicketCard";
@@ -22,12 +22,9 @@ export default function MeusIngressos() {
 
   useEffect(() => {
     (async () => {
-      const me = await base44.auth.me();
-      const pagina = await base44.entities.Reserva.filter(
-        { user_id: me.id },
-        { sort: "sessao_data", limit: 100 }
-      );
-      setReservas(pagina.items || []);
+      const me = await api.auth.me();
+      const lista = await api.reservas.list({ user_id: me?.id });
+      setReservas(lista || []);
     })();
   }, []);
 

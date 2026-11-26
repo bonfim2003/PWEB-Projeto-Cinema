@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { formatarData } from "@/lib/evento";
 import { SETORES_PADRAO, CAPACIDADES_PADRAO } from "@/lib/setores";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,11 +32,11 @@ export default function AdminSessoes() {
   const carregar = async () => {
     setCarregando(true);
     const [listaSessoes, listaFilmes] = await Promise.all([
-      base44.entities.Sessao.filter({}, { sort: "data", limit: 200 }),
-      base44.entities.Filme.list("-created_date", 200),
+      api.sessoes.list(),
+      api.filmes.list(),
     ]);
-    setSessoes(listaSessoes.items || []);
-    setFilmes(listaFilmes);
+    setSessoes(listaSessoes || []);
+    setFilmes(listaFilmes || []);
     setCarregando(false);
   };
 
@@ -61,11 +61,7 @@ export default function AdminSessoes() {
       local: sessao.local || "",
       status: sessao.status || "ativa",
     });
-    const pagina = await base44.entities.Setor.filter(
-      { sessao_id: sessao.id },
-      { sort: "ordem", limit: 10 }
-    );
-    const setores = pagina.items || [];
+    const setores = await api.setores.listBySessao(sessao.id);
     setSetoresOriginais(setores);
     const novas = { ...CAPACIDADES_PADRAO };
     SETORES_PADRAO.forEach((def) => {
@@ -84,11 +80,7 @@ export default function AdminSessoes() {
 
     try {
       if (editando) {
-        await base44.entities.Sessao.update(editando.id, payload);
-
-        const atualizacoes = [];
-        const criacoes = [];
-        SETORES_PADRAO.forEach((def) => {
+        const setoresAtualizados = SETORES_PADRAO.map((def) => {
           const original = setoresOriginais.find((setor) => setor.tipo === def.tipo);
           const novaCapacidade = Number(capacidades[def.chave]) || 0;
           if (original) {
@@ -97,38 +89,32 @@ export default function AdminSessoes() {
               (Number(original.capacidade_total) || 0) -
                 (Number(original.vagas_disponiveis) || 0)
             );
-            atualizacoes.push({
-              id: original.id,
+            return {
+              ...original,
               capacidade_total: novaCapacidade,
               vagas_disponiveis: Math.max(0, novaCapacidade - ocupadas),
-            });
-          } else {
-            criacoes.push({
-              sessao_id: editando.id,
-              nome: def.nome,
-              tipo: def.tipo,
-              descricao: def.descricao,
-              capacidade_total: novaCapacidade,
-              vagas_disponiveis: novaCapacidade,
-              ordem: def.ordem,
-            });
+            };
           }
-        });
-        if (atualizacoes.length) await base44.entities.Setor.bulkUpdate(atualizacoes);
-        if (criacoes.length) await base44.entities.Setor.bulkCreate(criacoes);
-      } else {
-        const nova = await base44.entities.Sessao.create(payload);
-        await base44.entities.Setor.bulkCreate(
-          SETORES_PADRAO.map((def) => ({
-            sessao_id: nova.id,
+          return {
             nome: def.nome,
             tipo: def.tipo,
             descricao: def.descricao,
-            capacidade_total: Number(capacidades[def.chave]) || 0,
-            vagas_disponiveis: Number(capacidades[def.chave]) || 0,
+            capacidade_total: novaCapacidade,
+            vagas_disponiveis: novaCapacidade,
             ordem: def.ordem,
-          }))
-        );
+          };
+        });
+        await api.sessoes.update(editando.id, payload, setoresAtualizados);
+      } else {
+        const setoresIniciais = SETORES_PADRAO.map((def) => ({
+          nome: def.nome,
+          tipo: def.tipo,
+          descricao: def.descricao,
+          capacidade_total: Number(capacidades[def.chave]) || 0,
+          vagas_disponiveis: Number(capacidades[def.chave]) || 0,
+          ordem: def.ordem,
+        }));
+        await api.sessoes.create(payload, setoresIniciais);
       }
       toast({ title: editando ? "Sessão atualizada" : "Sessão criada" });
       setAberto(false);
@@ -140,8 +126,7 @@ export default function AdminSessoes() {
 
   const excluir = async (sessao) => {
     if (!window.confirm(`Excluir a sessão de "${sessao.filme_titulo}"?`)) return;
-    await base44.entities.Setor.deleteMany({ sessao_id: sessao.id });
-    await base44.entities.Sessao.delete(sessao.id);
+    await api.sessoes.delete(sessao.id);
     toast({ title: "Sessão excluída" });
     await carregar();
   };

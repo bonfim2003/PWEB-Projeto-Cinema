@@ -1,18 +1,18 @@
-const TONS = {
-  mustard: "bg-mustard/80",
-  coral: "bg-coral/80",
-  lagoon: "bg-lagoon/80",
-  blush: "bg-blush/80",
+const TONES = {
+  mustard: "bg-mustard/85",
+  coral: "bg-coral/85",
+  lagoon: "bg-lagoon/85",
+  blush: "bg-blush/85",
   cream: "bg-cream/90",
 };
 
-/** Fita adesiva de colagem — usada para "prender" fotos e recortes. */
 export default function Tape({ tone = "mustard", className = "" }) {
   return (
     <span
       aria-hidden="true"
-      className={`pointer-events-none absolute block h-6 w-24 border border-ink/10 ${TONS[tone] || TONS.mustard} ${className}`}
-      style={{ clipPath: "polygon(0 12%, 100% 0, 97% 88%, 3% 100%)" }}
+      className={`pointer-events-none absolute z-10 h-6 w-24 border border-ink/25 shadow-sm backdrop-blur-[1px] ${
+        TONES[tone] || TONES.mustard
+      } ${className}`}
     />
   );
 }

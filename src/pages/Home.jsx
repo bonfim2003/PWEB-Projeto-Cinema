@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { format } from "date-fns";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -23,16 +23,13 @@ export default function Home() {
     const hoje = format(new Date(), "yyyy-MM-dd");
 
     (async () => {
-      const [listaFilmes, pagina] = await Promise.all([
-        base44.entities.Filme.list("-created_date", 200),
-        base44.entities.Sessao.filter(
-          { status: "ativa" },
-          { sort: "data", limit: 200 }
-        ),
+      const [listaFilmes, listaSessoes] = await Promise.all([
+        api.filmes.list(),
+        api.sessoes.list({ status: "ativa" }),
       ]);
       if (!ativo) return;
 
-      const futuras = (pagina.items || []).filter((sessao) => sessao.data >= hoje);
+      const futuras = (listaSessoes || []).filter((sessao) => sessao.data >= hoje);
 
       const primeiraPorFilme = new Map();
       futuras.forEach((sessao) => {

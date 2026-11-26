@@ -1,22 +1,17 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { loginWithMfa } from "@/lib/authMfa";
-import { signInWithProvider } from "@/lib/authMfaFlow";
-import MfaFlow from "@/components/MfaFlow";
-import { MfaScreen } from "@/components/MfaParts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 
 async function destinoPosLogin(returnTo) {
   if (returnTo && returnTo !== "/") return returnTo;
   try {
-    const usuario = await base44.auth.me();
+    const usuario = await api.auth.me();
     return usuario?.role === "admin" ? "/admin" : "/";
   } catch {
     return "/";
@@ -29,7 +24,6 @@ export default function Login() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mfaChallenge, setMfaChallenge] = useState(null);
   const returnTo = safeReturnTo();
 
   const handleSubmit = async (e) => {
@@ -37,11 +31,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const result = await loginWithMfa(email, password);
-      if (result.mfa_required) {
-        setMfaChallenge(result);
-        return;
-      }
+      await api.auth.login({ email, password });
       window.location.href = await destinoPosLogin(returnTo);
     } catch (err) {
       setError(err.message || "E-mail ou senha inválidos.");
@@ -50,26 +40,11 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = async () => {
-    try {
-      await signInWithProvider("google", returnTo);
-    } catch (err) {
-      setError(err.message || "Não foi possível entrar com o Google.");
-    }
-  };
-
-  if (mfaChallenge)
-    return (
-      <MfaScreen>
-        <MfaFlow challenge={mfaChallenge} returnTo={returnTo} />
-      </MfaScreen>
-    );
-
   return (
     <AuthLayout
       icon={LogIn}
       title="Bem-vindo de volta"
-      subtitle="Entre para acompanhar suas reservas"
+      subtitle="Entre para acompanhar suas reservas (use admin@... para painel)"
       footer={
         <>
           Ainda não tem conta?{" "}
@@ -82,24 +57,6 @@ export default function Login() {
         </>
       }
     >
-      <Button
-        variant="outline"
-        className="mb-6 h-12 w-full rounded-xl border-2 border-ink/25 text-sm font-medium"
-        onClick={handleGoogle}
-      >
-        <GoogleIcon className="mr-2 h-5 w-5" />
-        Continuar com Google
-      </Button>
-
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-ink/15" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-ink/40">ou</span>
-        </div>
-      </div>
-
       {error && (
         <div className="mb-4 rounded-xl border-2 border-coral bg-coral/20 p-3 text-sm text-ink">
           {error}
@@ -131,9 +88,6 @@ export default function Login() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Senha</Label>
-            <Link to="/forgot-password" className="text-xs font-medium text-coral hover:underline">
-              Esqueci minha senha
-            </Link>
           </div>
           <div className="relative">
             <Lock

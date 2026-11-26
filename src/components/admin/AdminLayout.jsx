@@ -1,6 +1,5 @@
 import { NavLink, Link, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard,
   Film,
@@ -19,7 +18,7 @@ const links = [
 ];
 
 export default function AdminLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   if (user && user.role !== "admin") {
     return (
@@ -41,7 +40,7 @@ export default function AdminLayout() {
           </Link>
           <button
             type="button"
-            onClick={() => base44.auth.logout()}
+            onClick={() => logout()}
             className="rounded-full border-2 border-ink px-6 py-3 text-sm font-semibold text-ink"
           >
             Sair
@@ -97,7 +96,7 @@ export default function AdminLayout() {
             </Link>
             <button
               type="button"
-              onClick={() => base44.auth.logout()}
+              onClick={() => logout()}
               className="mt-4 flex items-center gap-2 text-sm text-cream/60 transition-colors hover:text-cream"
             >
               <LogOut className="h-4 w-4" />

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import Brand from "@/components/Brand";
 import { Menu, X, Ticket, LogOut, LayoutDashboard } from "lucide-react";
 
@@ -13,13 +12,13 @@ const navLinks = [
 ];
 
 export default function SiteHeader() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
   const isAdmin = user?.role === "admin";
 
   const sair = () => {
     setMenuAberto(false);
-    base44.auth.logout();
+    logout();
   };
 
   return (

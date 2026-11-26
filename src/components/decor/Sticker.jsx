@@ -1,28 +1,19 @@
-const TONS = {
-  coral: "bg-coral text-ink",
+const TONES = {
   mustard: "bg-mustard text-ink",
+  coral: "bg-coral text-ink",
   lagoon: "bg-lagoon text-ink",
   blush: "bg-blush text-ink",
   cream: "bg-cream text-ink",
-  ink: "bg-ink text-cream",
 };
 
-/** Selo circular de revista — "adesivo" com borda pontilhada. */
-export default function Sticker({
-  children,
-  tone = "coral",
-  className = "",
-  ring = true,
-}) {
+export default function Sticker({ tone = "mustard", className = "", children }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full border-2 border-ink text-center text-[10px] font-semibold uppercase leading-tight tracking-retro ${
-        TONS[tone] || TONS.coral
-      } ${ring ? "p-[3px]" : ""} ${className}`}
+      className={`inline-flex flex-col items-center justify-center rounded-full border-2 border-ink text-center font-display text-[11px] font-bold uppercase leading-[1.05] tracking-tight shadow-block-sm ${
+        TONES[tone] || TONES.mustard
+      } ${className}`}
     >
-      <span className="flex h-full w-full items-center justify-center rounded-full border border-dashed border-ink/40 px-3 py-2">
-        {children}
-      </span>
+      {children}
     </span>
   );
 }

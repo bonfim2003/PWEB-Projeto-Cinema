@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Image } from "@/components/ui/image";
@@ -30,17 +30,14 @@ export default function FilmeDetalhe() {
     setCarregando(true);
     (async () => {
       try {
-        const [filmeDados, pagina] = await Promise.all([
-          base44.entities.Filme.get(id),
-          base44.entities.Sessao.filter(
-            { filme_id: id, status: "ativa" },
-            { sort: "data", limit: 20 }
-          ),
+        const [filmeDados, listaSessoes] = await Promise.all([
+          api.filmes.get(id),
+          api.sessoes.list({ filme_id: id, status: "ativa" }),
         ]);
         if (!ativo) return;
         setFilme(filmeDados);
-        setSessoes(pagina.items || []);
-        setSessaoSel(pagina.items?.[0] || null);
+        setSessoes(listaSessoes || []);
+        setSessaoSel(listaSessoes?.[0] || null);
       } catch (e) {
         if (ativo) setErro("Não encontramos este filme na programação.");
       } finally {
@@ -59,11 +56,8 @@ export default function FilmeDetalhe() {
     }
     let ativo = true;
     setSetorSel(null);
-    base44.entities.Setor.filter(
-      { sessao_id: sessaoSel.id },
-      { sort: "ordem", limit: 10 }
-    ).then((pagina) => {
-      if (ativo) setSetores(pagina.items || []);
+    api.setores.listBySessao(sessaoSel.id).then((lista) => {
+      if (ativo) setSetores(lista || []);
     });
     return () => {
       ativo = false;

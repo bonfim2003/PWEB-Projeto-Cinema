@@ -1,16 +1,31 @@
-# React + Vite
+# Cine Afterglow — PWEB Projeto Cinema (React + Express + SQLite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Equipe:** Andre, Murillo, Yasmin Bonfim
 
-Currently, two official plugins are available:
+## Como rodar o projeto (Front-end + Banco SQLite)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Instale todas as dependências (não precisa instalar XAMPP nem MySQL):
+   ```bash
+   npm install
+   ```
 
-## React Compiler
+2. Inicie o servidor da API (SQLite) e o front-end juntos:
+   ```bash
+   npm run dev
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. Acesse o sistema no navegador:
+   * **Site:** `http://localhost:5173`
+   * **API:** `http://localhost:3001`
+   * **Arquivo do banco SQLite:** gerado automaticamente em `server/database.sqlite`
 
-## Expanding the ESLint configuration
+## Acesso rápido para testes
+* **Painel Administrativo (`/admin`):** entre com qualquer e-mail contendo `admin` (ex.: `admin@cineafterglow.com.br`).
+* **Visitante:** entre com qualquer outro e-mail (ex.: `visitante@cineafterglow.com.br`).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Estrutura do Banco de Dados (`server/schema.sql`)
+* `usuarios` — contas de visitantes e administradores
+* `filmes` — catálogo de filmes em cartaz
+* `sessoes` — datas, horários e locais vinculados a cada filme
+* `setores` — setores A, B, C e D de cada sessão com controle de capacidade e vagas
+* `reservas` — ingressos reservados com código localizador e baixa/estorno automático de vagas

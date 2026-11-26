@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { useAuth } from "@/lib/AuthContext";
 import { formatarDataLonga } from "@/lib/evento";
 import {
@@ -34,15 +34,14 @@ export default function BookingPanel({ sessao, setor, onConfirmada }) {
     setErro("");
     setEnviando(true);
     try {
-      const resposta = await base44.functions.invoke("criarReserva", {
+      const reserva = await api.reservas.criar({
         sessao_id: sessao.id,
         setor_id: setor.id,
         nome,
         email,
         quantidade,
       });
-      if (resposta.data?.error) throw new Error(resposta.data.error);
-      onConfirmada(resposta.data.reserva);
+      onConfirmada(reserva);
     } catch (err) {
       setErro(
         err?.response?.data?.error ||

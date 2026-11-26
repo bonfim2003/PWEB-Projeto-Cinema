@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { formatarData } from "@/lib/evento";
 import { Film, CalendarDays, Ticket, Armchair, Loader2 } from "lucide-react";
 
@@ -24,28 +24,22 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     (async () => {
-      const [filmes, paginaSessoes, totalReservas, canceladas, soma, recentes] =
-        await Promise.all([
-          base44.entities.Filme.list(),
-          base44.entities.Sessao.filter({ status: "ativa" }, { sort: "data", limit: 100 }),
-          base44.entities.Reserva.count({ status: "confirmada" }),
-          base44.entities.Reserva.count({ status: "cancelada" }),
-          base44.entities.Reserva.aggregate({
-            query: { status: "confirmada" },
-            sum: ["quantidade"],
-          }),
-          base44.entities.Reserva.list({ sort: "-created_date", limit: 6 }),
-        ]);
-      const ingressos = (soma.rows || []).reduce(
-        (t, r) => t + (Number(r.sum_quantidade) || 0),
+      const [filmes, listaSessoes, todasReservas] = await Promise.all([
+        api.filmes.list(),
+        api.sessoes.list({ status: "ativa" }),
+        api.reservas.list(),
+      ]);
+
+      const confirmadas = todasReservas.filter((r) => r.status === "confirmada");
+      const canceladas = todasReservas.filter((r) => r.status === "cancelada").length;
+      const ingressos = confirmadas.reduce(
+        (t, r) => t + (Number(r.quantidade) || 0),
         0
       );
 
-      const proximas = (paginaSessoes.items || []).filter((s) => s.data >= hoje());
+      const proximas = (listaSessoes || []).filter((s) => s.data >= hoje());
       const ids = proximas.map((s) => s.id);
-      const setores = ids.length
-        ? (await base44.entities.Setor.filter({ sessao_id: { $in: ids } }, { limit: 400 })).items || []
-        : [];
+      const setores = ids.length ? await api.setores.listBySessoes(ids) : [];
       const vagas = setores.reduce(
         (total, setor) => total + (Number(setor.vagas_disponiveis) || 0),
         0
@@ -54,10 +48,10 @@ export default function AdminDashboard() {
       setDados({
         filmes: filmes.length,
         proximas,
-        reservas: totalReservas,
+        reservas: confirmadas.length,
         canceladas,
         ingressos,
-        recentes: recentes.items || [],
+        recentes: todasReservas.slice(0, 6),
         vagas,
       });
     })();

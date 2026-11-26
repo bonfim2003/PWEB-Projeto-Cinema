@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { formatarData } from "@/lib/evento";
 import { toast } from "@/components/ui/use-toast";
 import { Search, Loader2, TicketX, Ban, Inbox } from "lucide-react";
@@ -20,22 +20,11 @@ export default function AdminReservas() {
 
   const carregar = async (texto = termo, filtro = status) => {
     setCarregando(true);
-    const query = {};
-    if (filtro !== "todas") query.status = filtro;
-    if (texto.trim()) {
-      const alvo = texto.trim();
-      query.$or = [
-        { nome: { $regex: alvo, $options: "i" } },
-        { email: { $regex: alvo, $options: "i" } },
-        { filme_titulo: { $regex: alvo, $options: "i" } },
-        { codigo: { $regex: alvo, $options: "i" } },
-      ];
-    }
-    const pagina = await base44.entities.Reserva.filter(query, {
-      sort: "-created_date",
-      limit: 100,
+    const lista = await api.reservas.list({
+      status: filtro,
+      busca: texto.trim(),
     });
-    setReservas(pagina.items || []);
+    setReservas(lista || []);
     setCarregando(false);
   };
 
@@ -64,10 +53,7 @@ export default function AdminReservas() {
     if (!window.confirm(`Cancelar a reserva ${reserva.codigo} e devolver as vagas?`)) return;
     setCancelando(reserva.id);
     try {
-      const resposta = await base44.functions.invoke("cancelarReserva", {
-        reserva_id: reserva.id,
-      });
-      if (resposta.data?.error) throw new Error(resposta.data.error);
+      await api.reservas.cancelar(reserva.id);
       setReservas((atuais) =>
         atuais.map((item) =>
           item.id === reserva.id ? { ...item, status: "cancelada" } : item

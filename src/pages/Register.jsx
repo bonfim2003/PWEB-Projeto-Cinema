@@ -1,18 +1,19 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
-import { signInWithProvider } from "@/lib/authMfaFlow";
-import MfaFlow from "@/components/MfaFlow";
-import { MfaScreen } from "@/components/MfaParts";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { UserPlus, Mail, Lock, Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
-import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
+
+const REGRAS_SENHA = [
+  { id: "tamanho", label: "Pelo menos 8 caracteres", test: (s) => s.length >= 8 },
+  { id: "maiuscula", label: "Uma letra maiúscula (A-Z)", test: (s) => /[A-Z]/.test(s) },
+  { id: "minuscula", label: "Uma letra minúscula (a-z)", test: (s) => /[a-z]/.test(s) },
+  { id: "numero", label: "Um número (0-9)", test: (s) => /\d/.test(s) },
+];
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -21,135 +22,35 @@ export default function Register() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [mfaChallenge, setMfaChallenge] = useState(null);
+  const returnTo = safeReturnTo();
   const loginPath =
-    "/login" +
-    (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "");
+    "/login" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    const regraFaltando = REGRAS_SENHA.find((regra) => !regra.test(password));
+    if (regraFaltando) {
+      setError(`A senha precisa ter: ${regraFaltando.label.toLowerCase()}.`);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("As senhas não coincidem.");
       return;
     }
+
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
-      setShowOtp(true);
+      await api.auth.register({ email, password });
+      window.location.href = returnTo;
     } catch (err) {
       setError(err.message || "Não foi possível criar a conta.");
     } finally {
       setLoading(false);
     }
   };
-
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.mfa_required) {
-        setMfaChallenge(result);
-        return;
-      }
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
-      window.location.href = safeReturnTo();
-    } catch (err) {
-      setError(err.message || "Código de verificação inválido.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError("");
-    try {
-      await base44.auth.resendOtp(email);
-      toast({
-        title: "Código reenviado",
-        description: "Confira seu e-mail para o novo código.",
-      });
-    } catch (err) {
-      setError(err.message || "Não foi possível reenviar o código.");
-    }
-  };
-
-  const handleGoogle = async () => {
-    try {
-      await signInWithProvider("google", safeReturnTo());
-    } catch (err) {
-      setError(err.message || "Não foi possível entrar com o Google.");
-    }
-  };
-
-  if (mfaChallenge)
-    return (
-      <MfaScreen>
-        <MfaFlow challenge={mfaChallenge} returnTo={safeReturnTo()} />
-      </MfaScreen>
-    );
-
-  if (showOtp) {
-    return (
-      <AuthLayout
-        icon={Mail}
-        title="Confirme seu e-mail"
-        subtitle={`Enviamos um código para ${email}`}
-      >
-        {error && (
-          <div className="mb-4 rounded-xl border-2 border-coral bg-coral/20 p-3 text-sm text-ink">
-            {error}
-          </div>
-        )}
-        <div className="mb-6 flex justify-center">
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={setOtpCode}
-            autoFocus
-            autoComplete="one-time-code"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        <Button
-          className="h-12 w-full rounded-xl border-2 border-ink bg-coral font-semibold text-ink hover:bg-coral/90"
-          onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verificando...
-            </>
-          ) : (
-            "Verificar"
-          )}
-        </Button>
-        <p className="mt-4 text-center text-sm text-ink/60">
-          Não recebeu o código?{" "}
-          <button
-            onClick={handleResend}
-            className="font-semibold text-coral hover:underline"
-          >
-            Reenviar
-          </button>
-        </p>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout
@@ -165,26 +66,8 @@ export default function Register() {
         </>
       }
     >
-      <Button
-        variant="outline"
-        className="mb-6 h-12 w-full rounded-xl border-2 border-ink/25 text-sm font-medium"
-        onClick={handleGoogle}
-      >
-        <GoogleIcon className="mr-2 h-5 w-5" />
-        Continuar com Google
-      </Button>
-
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-ink/15" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-ink/40">ou</span>
-        </div>
-      </div>
-
       {error && (
-        <div className="mb-4 rounded-xl border-2 border-coral bg-coral/20 p-3 text-sm text-ink">
+        <div className="mb-4 rounded-xl border-2 border-coral bg-coral/20 p-3 text-sm font-medium text-ink">
           {error}
         </div>
       )}
@@ -237,6 +120,27 @@ export default function Register() {
               {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+
+          <ul className="space-y-1 pt-1 text-xs" aria-label="Requisitos da senha">
+            {REGRAS_SENHA.map((regra) => {
+              const atendida = regra.test(password);
+              return (
+                <li
+                  key={regra.id}
+                  className={`flex items-center gap-1.5 transition-colors ${
+                    atendida ? "font-medium text-emerald-700" : "text-ink/55"
+                  }`}
+                >
+                  {atendida ? (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-emerald-700" />
+                  ) : (
+                    <X className="h-3.5 w-3.5 shrink-0 text-ink/35" />
+                  )}
+                  <span>{regra.label}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         <div className="space-y-2">

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { Image } from "@/components/ui/image";
 import { ImagePlus, Loader2, Trash2, UploadCloud } from "lucide-react";
 
@@ -27,7 +27,7 @@ export default function PosterUpload({ value, onChange }) {
 
     setEnviando(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
+      const { file_url } = await api.uploads.uploadPoster(file);
       onChange(file_url);
     } catch {
       setErro("Não foi possível enviar a imagem. Tente novamente.");

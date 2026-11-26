@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/services/api";
 import { Image } from "@/components/ui/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,7 +37,7 @@ export default function AdminFilmes() {
 
   const carregar = async () => {
     setCarregando(true);
-    const lista = await base44.entities.Filme.list("-created_date", 200);
+    const lista = await api.filmes.list();
     setFilmes(lista);
     setCarregando(false);
   };
@@ -89,9 +89,9 @@ export default function AdminFilmes() {
     };
     try {
       if (editando) {
-        await base44.entities.Filme.update(editando.id, dados);
+        await api.filmes.update(editando.id, dados);
       } else {
-        await base44.entities.Filme.create(dados);
+        await api.filmes.create(dados);
       }
       toast({ title: editando ? "Filme atualizado" : "Filme cadastrado" });
       setAberto(false);
@@ -105,7 +105,7 @@ export default function AdminFilmes() {
     if (!window.confirm(`Excluir o filme "${filme.titulo}"? Esta ação não pode ser desfeita.`)) {
       return;
     }
-    await base44.entities.Filme.delete(filme.id);
+    await api.filmes.delete(filme.id);
     toast({ title: "Filme excluído" });
     await carregar();
   };
