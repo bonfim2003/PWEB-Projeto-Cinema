@@ -1,352 +1,226 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Ban, CalendarOff, Loader2, Plus, Users } from "lucide-react";
 import { api } from "@/services/api";
-import { formatarData } from "@/lib/evento";
-import { SETORES_PADRAO, CAPACIDADES_PADRAO } from "@/lib/setores";
+import { Image } from "@/components/ui/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { Plus, Pencil, Trash2, Loader2, CalendarOff } from "lucide-react";
+import { BotaoPrincipal, Cabecalho, Carregando, Erro, Etiqueta, campo } from "@/components/admin/ui";
+import { formatarData, formatarHora } from "@/lib/evento";
 
-const campo =
-  "mt-1 w-full rounded-xl border-2 border-ink/25 bg-cream px-3 py-2.5 text-sm text-ink outline-none transition-colors focus:border-ink";
-
-const FORM_VAZIO = {
-  filme_id: "",
-  data: "",
-  horario: "19h30",
-  local: "Parque Aurora — Gramado principal",
-  status: "ativa",
-};
+const situacao = (s) => (s.status === "CANCELADA" ? "CANCELADA" : new Date(s.starts_at) <= new Date() ? "ENCERRADA" : "ABERTA");
+const ROTULO = { ABERTA: "Aberta", ENCERRADA: "Já começou", CANCELADA: "Cancelada" };
 
 export default function AdminSessoes() {
-  const [sessoes, setSessoes] = useState([]);
+  const [sessoes, setSessoes] = useState(null);
   const [filmes, setFilmes] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [aberto, setAberto] = useState(false);
-  const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState(FORM_VAZIO);
-  const [capacidades, setCapacidades] = useState(CAPACIDADES_PADRAO);
-  const [setoresOriginais, setSetoresOriginais] = useState([]);
-  const [salvando, setSalvando] = useState(false);
+  const [locais, setLocais] = useState([]);
+  const [criando, setCriando] = useState(false);
+  const [form, setForm] = useState({ movieId: "", locationId: "", inicio: "" });
+  const [cancelando, setCancelando] = useState(null);
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [erroForm, setErroForm] = useState("");
 
-  const carregar = async () => {
-    setCarregando(true);
-    const [listaSessoes, listaFilmes] = await Promise.all([
-      api.sessoes.list(),
-      api.filmes.list(),
-    ]);
-    setSessoes(listaSessoes || []);
-    setFilmes(listaFilmes || []);
-    setCarregando(false);
-  };
-
+  const carregar = () => api.sessoes.gestao().then(setSessoes);
   useEffect(() => {
     carregar();
+    api.filmes.listar().then(setFilmes);
+    api.locais.listar().then(setLocais);
   }, []);
 
   const abrirNova = () => {
-    setEditando(null);
-    setForm({ ...FORM_VAZIO, filme_id: filmes[0]?.id || "" });
-    setCapacidades(CAPACIDADES_PADRAO);
-    setSetoresOriginais([]);
-    setAberto(true);
+    setForm({ movieId: filmes[0]?.id || "", locationId: locais[0]?.id || "", inicio: "" });
+    setErroForm("");
+    setCriando(true);
   };
 
-  const abrirEdicao = async (sessao) => {
-    setEditando(sessao);
-    setForm({
-      filme_id: sessao.filme_id || "",
-      data: sessao.data || "",
-      horario: sessao.horario || "",
-      local: sessao.local || "",
-      status: sessao.status || "ativa",
-    });
-    const setores = await api.setores.listBySessao(sessao.id);
-    setSetoresOriginais(setores);
-    const novas = { ...CAPACIDADES_PADRAO };
-    SETORES_PADRAO.forEach((def) => {
-      const encontrado = setores.find((setor) => setor.tipo === def.tipo);
-      if (encontrado) novas[def.chave] = encontrado.capacidade_total;
-    });
-    setCapacidades(novas);
-    setAberto(true);
-  };
-
-  const salvar = async (event) => {
+  const criar = async (event) => {
     event.preventDefault();
-    setSalvando(true);
-    const filme = filmes.find((item) => item.id === form.filme_id);
-    const payload = { ...form, filme_titulo: filme?.titulo || "" };
-
+    setErroForm("");
+    setEnviando(true);
     try {
-      if (editando) {
-        const setoresAtualizados = SETORES_PADRAO.map((def) => {
-          const original = setoresOriginais.find((setor) => setor.tipo === def.tipo);
-          const novaCapacidade = Number(capacidades[def.chave]) || 0;
-          if (original) {
-            const ocupadas = Math.max(
-              0,
-              (Number(original.capacidade_total) || 0) -
-                (Number(original.vagas_disponiveis) || 0)
-            );
-            return {
-              ...original,
-              capacidade_total: novaCapacidade,
-              vagas_disponiveis: Math.max(0, novaCapacidade - ocupadas),
-            };
-          }
-          return {
-            nome: def.nome,
-            tipo: def.tipo,
-            descricao: def.descricao,
-            capacidade_total: novaCapacidade,
-            vagas_disponiveis: novaCapacidade,
-            ordem: def.ordem,
-          };
-        });
-        await api.sessoes.update(editando.id, payload, setoresAtualizados);
-      } else {
-        const setoresIniciais = SETORES_PADRAO.map((def) => ({
-          nome: def.nome,
-          tipo: def.tipo,
-          descricao: def.descricao,
-          capacidade_total: Number(capacidades[def.chave]) || 0,
-          vagas_disponiveis: Number(capacidades[def.chave]) || 0,
-          ordem: def.ordem,
-        }));
-        await api.sessoes.create(payload, setoresIniciais);
-      }
-      toast({ title: editando ? "Sessão atualizada" : "Sessão criada" });
-      setAberto(false);
+      // datetime-local vem no horário do navegador; toISOString converte para UTC
+      await api.sessoes.criar({
+        movieId: Number(form.movieId),
+        locationId: Number(form.locationId),
+        startsAt: new Date(form.inicio).toISOString(),
+      });
+      toast({ title: "Sessão criada", description: "As áreas do local foram copiadas para a sessão." });
+      setCriando(false);
       await carregar();
+    } catch (e) {
+      setErroForm(e.message);
     } finally {
-      setSalvando(false);
+      setEnviando(false);
     }
   };
 
-  const excluir = async (sessao) => {
-    if (!window.confirm(`Excluir a sessão de "${sessao.filme_titulo}"?`)) return;
-    await api.sessoes.delete(sessao.id);
-    toast({ title: "Sessão excluída" });
-    await carregar();
+  const confirmarCancelamento = async (event) => {
+    event.preventDefault();
+    setErroForm("");
+    setEnviando(true);
+    try {
+      const { notificados } = await api.sessoes.cancelar(cancelando.id, motivo);
+      toast({
+        title: "Sessão cancelada",
+        description: notificados ? `${notificados} pessoa(s) receberam o aviso em Meus ingressos.` : "Não havia reservas ativas.",
+      });
+      setCancelando(null);
+      await carregar();
+    } catch (e) {
+      setErroForm(e.message);
+    } finally {
+      setEnviando(false);
+    }
   };
+
+  const localEscolhido = locais.find((l) => String(l.id) === String(form.locationId));
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-retro text-ink/45">Agenda</p>
-          <h1 className="mt-2 font-display text-3xl text-ink lg:text-4xl">Sessões</h1>
-        </div>
-        <button
-          type="button"
-          onClick={abrirNova}
-          disabled={filmes.length === 0}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-coral px-5 py-3 text-sm font-semibold text-ink shadow-block-sm transition-all hover:-translate-y-0.5 disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          Nova sessão
-        </button>
-      </div>
+      <Cabecalho
+        sobre="agenda"
+        titulo="Sessões"
+        acao={
+          <BotaoPrincipal onClick={abrirNova} disabled={!filmes.length || !locais.length}>
+            <Plus className="h-4 w-4" />
+            Nova sessão
+          </BotaoPrincipal>
+        }
+      />
 
       <div className="mt-8 overflow-hidden rounded-2xl border-2 border-ink bg-card">
-        {carregando ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-ink/40" />
-          </div>
+        {!sessoes ? (
+          <Carregando />
         ) : sessoes.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <CalendarOff className="h-7 w-7 text-ink/30" />
-            <p className="mt-3 text-sm text-ink/50">Nenhuma sessão agendada.</p>
+            <p className="mt-3 text-sm text-ink/50">Nenhuma sessão cadastrada.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b-2 border-ink/10 text-[10px] uppercase tracking-retro text-ink/45">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Filme</th>
-                  <th className="px-5 py-3 font-medium">Data</th>
-                  <th className="px-5 py-3 font-medium">Horário</th>
-                  <th className="px-5 py-3 font-medium">Local</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 text-right font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink/10">
-                {sessoes.map((sessao) => (
-                  <tr key={sessao.id}>
-                    <td className="px-5 py-3 font-semibold text-ink">
-                      {sessao.filme_titulo}
-                    </td>
-                    <td className="px-5 py-3 text-ink/70">{formatarData(sessao.data)}</td>
-                    <td className="px-5 py-3 text-ink/70">{sessao.horario}</td>
-                    <td className="px-5 py-3 text-ink/60">{sessao.local}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-retro ${
-                          sessao.status === "cancelada"
-                            ? "border-coral bg-coral/25 text-ink"
-                            : "border-ink/30 bg-lagoon/30 text-ink"
-                        }`}
+          <ul className="divide-y divide-ink/10">
+            {sessoes.map((s) => {
+              const sit = situacao(s);
+              return (
+                <li key={s.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                  <Image src={s.banner_url} alt="" className="h-14 w-10 shrink-0 rounded border border-ink/20" />
+                  <div className="min-w-[200px] flex-1">
+                    <p className="font-semibold text-ink">{s.title}</p>
+                    <p className="text-xs text-ink/55">
+                      {formatarData(s.starts_at)}, {formatarHora(s.starts_at)} · {s.local}
+                    </p>
+                    {s.status === "CANCELADA" && <p className="mt-1 text-xs text-ink/55">Motivo: {s.cancel_reason}</p>}
+                  </div>
+                  <Etiqueta valor={sit}>{ROTULO[sit]}</Etiqueta>
+                  <span className="w-28 text-right text-xs text-ink/60">
+                    {s.validos + s.utilizados}/{s.capacidade} reservados
+                    <br />
+                    {s.utilizados} entraram
+                  </span>
+                  <div className="flex gap-2">
+                    <Link
+                      to={`/admin/sessoes/${s.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1.5 text-xs font-semibold text-ink hover:bg-mustard/40"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Reservas
+                    </Link>
+                    {sit === "ABERTA" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCancelando(s);
+                          setMotivo("");
+                          setErroForm("");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/30 px-3 py-1.5 text-xs font-semibold text-ink hover:border-coral hover:bg-coral/20"
                       >
-                        {sessao.status === "cancelada" ? "Cancelada" : "Ativa"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => abrirEdicao(sessao)}
-                          aria-label="Editar sessão"
-                          className="rounded-lg border-2 border-ink/20 p-2 text-ink transition-colors hover:border-ink"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => excluir(sessao)}
-                          aria-label="Excluir sessão"
-                          className="rounded-lg border-2 border-ink/20 p-2 text-ink transition-colors hover:border-coral hover:bg-coral/20"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <Ban className="h-3.5 w-3.5" />
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
-      <Dialog open={aberto} onOpenChange={setAberto}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl border-2 border-ink bg-cream">
+      <Dialog open={criando} onOpenChange={setCriando}>
+        <DialogContent className="max-w-lg rounded-2xl border-2 border-ink bg-cream">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-ink">
-              {editando ? "Editar sessão" : "Nova sessão"}
-            </DialogTitle>
+            <DialogTitle className="font-display text-2xl text-ink">Nova sessão</DialogTitle>
           </DialogHeader>
-
-          <form onSubmit={salvar} className="space-y-4">
+          <form onSubmit={criar} className="space-y-4">
             <div>
-              <label className="text-sm font-semibold text-ink">Filme</label>
-              <Select
-                value={form.filme_id}
-                onValueChange={(valor) => setForm({ ...form, filme_id: valor })}
-              >
-                <SelectTrigger className="mt-1 h-[42px] rounded-xl border-2 border-ink/25 bg-cream">
-                  <SelectValue placeholder="Selecione o filme" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filmes.map((filme) => (
-                    <SelectItem key={filme.id} value={filme.id}>
-                      {filme.titulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-sm font-semibold text-ink" htmlFor="data">
-                  Data
-                </label>
-                <input
-                  id="data"
-                  type="date"
-                  required
-                  value={form.data}
-                  onChange={(e) => setForm({ ...form, data: e.target.value })}
-                  className={campo}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink" htmlFor="horario">
-                  Horário
-                </label>
-                <input
-                  id="horario"
-                  required
-                  placeholder="19h30"
-                  value={form.horario}
-                  onChange={(e) => setForm({ ...form, horario: e.target.value })}
-                  className={campo}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-sm font-semibold text-ink" htmlFor="local">
-                  Local
-                </label>
-                <input
-                  id="local"
-                  value={form.local}
-                  onChange={(e) => setForm({ ...form, local: e.target.value })}
-                  className={campo}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">Status</label>
-                <Select
-                  value={form.status}
-                  onValueChange={(valor) => setForm({ ...form, status: valor })}
-                >
-                  <SelectTrigger className="mt-1 h-[42px] rounded-xl border-2 border-ink/25 bg-cream">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativa">Ativa</SelectItem>
-                    <SelectItem value="cancelada">Cancelada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border-2 border-ink/15 p-4">
-              <p className="text-sm font-semibold text-ink">Capacidade por setor</p>
-              <p className="mt-1 text-xs text-ink/50">
-                As vagas já reservadas são preservadas ao alterar a capacidade.
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {SETORES_PADRAO.map((def) => (
-                  <div key={def.chave}>
-                    <label className="text-xs font-medium text-ink/70" htmlFor={`cap-${def.chave}`}>
-                      {def.nome} · {def.tipo}
-                    </label>
-                    <input
-                      id={`cap-${def.chave}`}
-                      type="number"
-                      min="0"
-                      value={capacidades[def.chave]}
-                      onChange={(e) =>
-                        setCapacidades({ ...capacidades, [def.chave]: e.target.value })
-                      }
-                      className={campo}
-                    />
-                  </div>
+              <label htmlFor="filme" className="text-sm font-semibold text-ink">Filme</label>
+              <select id="filme" required value={form.movieId} onChange={(e) => setForm({ ...form, movieId: e.target.value })} className={campo}>
+                {filmes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.title}</option>
                 ))}
-              </div>
+              </select>
             </div>
-
+            <div>
+              <label htmlFor="local" className="text-sm font-semibold text-ink">Local</label>
+              <select id="local" required value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} className={campo}>
+                {locais.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+              {localEscolhido && (
+                <p className="mt-1 text-xs text-ink/50">
+                  Áreas copiadas: {localEscolhido.areas.map((a) => `${a.name} (${a.capacity})`).join(", ")}
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="inicio" className="text-sm font-semibold text-ink">Data e hora</label>
+              <input id="inicio" type="datetime-local" required value={form.inicio} onChange={(e) => setForm({ ...form, inicio: e.target.value })} className={campo} />
+            </div>
+            <Erro>{erroForm}</Erro>
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setAberto(false)}
-                className="rounded-full border-2 border-ink/25 px-5 py-2.5 text-sm font-semibold text-ink"
-              >
-                Cancelar
+              <button type="button" onClick={() => setCriando(false)} className="rounded-full border-2 border-ink/25 px-5 py-2.5 text-sm font-semibold text-ink">
+                Voltar
               </button>
-              <button
-                type="submit"
-                disabled={salvando}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-coral px-6 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
-              >
-                {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
-                Salvar
+              <button type="submit" disabled={enviando} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-coral px-6 py-2.5 text-sm font-semibold text-ink disabled:opacity-60">
+                {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
+                Criar sessão
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(cancelando)} onOpenChange={(v) => !v && setCancelando(null)}>
+        <DialogContent className="max-w-lg rounded-2xl border-2 border-ink bg-cream">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl text-ink">Cancelar sessão</DialogTitle>
+          </DialogHeader>
+          {cancelando && (
+            <form onSubmit={confirmarCancelamento} className="space-y-4">
+              <p className="text-sm text-ink/70">
+                <strong>{cancelando.title}</strong>, {formatarData(cancelando.starts_at)} às {formatarHora(cancelando.starts_at)} em{" "}
+                {cancelando.local}. Todas as reservas e ingressos serão cancelados e cada pessoa recebe um aviso com o motivo.
+                Para remarcar, crie uma nova sessão.
+              </p>
+              <div>
+                <label htmlFor="motivo" className="text-sm font-semibold text-ink">Motivo</label>
+                <textarea id="motivo" required minLength={3} rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: previsão de chuva forte" className={campo} />
+              </div>
+              <Erro>{erroForm}</Erro>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setCancelando(null)} className="rounded-full border-2 border-ink/25 px-5 py-2.5 text-sm font-semibold text-ink">
+                  Voltar
+                </button>
+                <button type="submit" disabled={enviando} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-coral px-6 py-2.5 text-sm font-semibold text-ink disabled:opacity-60">
+                  {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Cancelar sessão e avisar
+                </button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
