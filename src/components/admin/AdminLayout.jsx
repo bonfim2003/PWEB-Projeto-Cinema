@@ -1,65 +1,27 @@
 import { NavLink, Link, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import {
-  LayoutDashboard,
-  Film,
-  CalendarDays,
-  Ticket,
-  LogOut,
-  ArrowUpRight,
-  ShieldAlert,
-} from "lucide-react";
+import { LayoutDashboard, Film, CalendarDays, MapPin, Users, ScanLine, LogOut, ArrowUpRight } from "lucide-react";
 
 const links = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/filmes", label: "Filmes", icon: Film },
+  { to: "/admin/locais", label: "Locais", icon: MapPin },
   { to: "/admin/sessoes", label: "Sessões", icon: CalendarDays },
-  { to: "/admin/reservas", label: "Reservas", icon: Ticket },
+  { to: "/admin/usuarios", label: "Usuários", icon: Users },
+  { to: "/portaria", label: "Portaria", icon: ScanLine },
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
-
-  if (user && user.role !== "admin") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-5 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-ink bg-coral">
-          <ShieldAlert className="h-6 w-6 text-ink" />
-        </span>
-        <h1 className="mt-6 font-display text-3xl text-ink">Área restrita</h1>
-        <p className="mt-3 max-w-sm text-sm text-ink/60">
-          Seu usuário não tem permissão de administrador. Se você faz parte da
-          produção do evento, peça acesso à organização.
-        </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link
-            to="/"
-            className="rounded-full border-2 border-ink bg-coral px-6 py-3 text-sm font-semibold text-ink"
-          >
-            Voltar ao site
-          </Link>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="rounded-full border-2 border-ink px-6 py-3 text-sm font-semibold text-ink"
-          >
-            Sair
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const { user, sair } = useAuth();
 
   return (
     <div className="min-h-screen bg-cream">
       <div className="mx-auto flex max-w-[1440px] flex-col lg:flex-row">
         <aside className="border-b-2 border-ink bg-ink p-5 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r-2">
           <Link to="/" className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-cream/60 bg-mustard">
-              <span className="h-3 w-3 rounded-full bg-ink" />
-            </span>
+            <img src="/logo.png" alt="" className="h-9 w-9 rounded-full border-2 border-cream/60 object-cover" />
             <span className="font-display text-base tracking-wide text-cream">
-              CINE AFTERGLOW
+              CINE PIPOCA
             </span>
           </Link>
           <p className="mt-1 pl-12 text-[10px] uppercase tracking-retro text-cream/40">
@@ -87,6 +49,7 @@ export default function AdminLayout() {
           </nav>
 
           <div className="mt-8 hidden border-t border-cream/15 pt-5 lg:block">
+            <p className="mb-4 truncate text-xs text-cream/50">{user?.name}</p>
             <Link
               to="/"
               className="flex items-center gap-2 text-sm text-cream/60 transition-colors hover:text-cream"
@@ -96,7 +59,7 @@ export default function AdminLayout() {
             </Link>
             <button
               type="button"
-              onClick={() => logout()}
+              onClick={sair}
               className="mt-4 flex items-center gap-2 text-sm text-cream/60 transition-colors hover:text-cream"
             >
               <LogOut className="h-4 w-4" />
