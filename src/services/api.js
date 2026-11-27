@@ -1,162 +1,117 @@
-// Camada de comunicação com o backend Express + SQLite (server/index.js)
+// Camada de comunicação com a API Express (server/). O token JWT vai no cabeçalho Authorization.
+const TOKEN_KEY = "cine_token";
+const USER_KEY = "cine_user";
 
-const USER_SESSION_KEY = "cine_user_session";
+export const sessaoLocal = {
+  token: () => localStorage.getItem(TOKEN_KEY),
+  user: () => {
+    try {
+      return JSON.parse(localStorage.getItem(USER_KEY) || "null");
+    } catch {
+      return null;
+    }
+  },
+  salvar({ token, user }) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  },
+  limpar() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  },
+};
 
-async function request(url, options = {}) {
-  const isFormData = options.body instanceof FormData;
-  const headers = isFormData
-    ? options.headers || {}
-    : { "Content-Type": "application/json", ...(options.headers || {}) };
+async function request(rota, { method = "GET", body, redirecionar = true } = {}) {
+  const token = sessaoLocal.token();
+  const resp = await fetch(`/api${rota}`, {
+    method,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const dados = await resp.json().catch(() => ({}));
 
-  const res = await fetch(url, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || "Erro na comunicação com o servidor.");
+  // token vencido ou inválido: limpa a sessão e manda para o login
+  if (resp.status === 401 && token && redirecionar) {
+    sessaoLocal.limpar();
+    window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
   }
-  return data;
+  if (!resp.ok) throw new Error(dados.erro || "Não foi possível falar com o servidor.");
+  return dados;
 }
+
+const post = (rota, body = {}) => request(rota, { method: "POST", body });
+const put = (rota, body) => request(rota, { method: "PUT", body });
+const del = (rota) => request(rota, { method: "DELETE" });
 
 export const api = {
   auth: {
-    async me() {
-      try {
-        const raw = localStorage.getItem(USER_SESSION_KEY);
-        if (!raw) return null;
-        const cached = JSON.parse(raw);
-        // Valida se o usuário ainda existe no SQLite
-        const fresh = await request(`/api/auth/me/${encodeURIComponent(cached.id)}`);
-        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(fresh));
-        return fresh;
-      } catch {
-        localStorage.removeItem(USER_SESSION_KEY);
-        return null;
-      }
+    async login(email, password) {
+      const dados = await post("/auth/login", { email, password });
+      sessaoLocal.salvar(dados);
+      return dados.user;
     },
-    async login({ email, password }) {
-      const user = await request("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
-      return user;
+    async cadastrar({ name, email, password }) {
+      const dados = await post("/auth/cadastro", { name, email, password });
+      sessaoLocal.salvar(dados);
+      return dados.user;
     },
-    async register({ email, password, full_name }) {
-      const user = await request("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ email, password, full_name }),
-      });
-      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
-      return user;
-    },
-    logout() {
-      localStorage.removeItem(USER_SESSION_KEY);
+    me: () => request("/auth/me", { redirecionar: false }),
+    sair() {
+      sessaoLocal.limpar();
       window.location.href = "/";
     },
   },
 
   filmes: {
-    async list() {
-      return request("/api/filmes");
-    },
-    async get(id) {
-      return request(`/api/filmes/${encodeURIComponent(id)}`);
-    },
-    async create(dados) {
-      return request("/api/filmes", {
-        method: "POST",
-        body: JSON.stringify(dados),
-      });
-    },
-    async update(id, dados) {
-      return request(`/api/filmes/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        body: JSON.stringify(dados),
-      });
-    },
-    async delete(id) {
-      return request(`/api/filmes/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-    },
+    listar: () => request("/filmes"),
+    criar: (dados) => post("/filmes", dados),
+    atualizar: (id, dados) => put(`/filmes/${id}`, dados),
+    excluir: (id) => del(`/filmes/${id}`),
+  },
+
+  locais: {
+    listar: () => request("/locais"),
+    criar: (dados) => post("/locais", dados),
+    atualizar: (id, dados) => put(`/locais/${id}`, dados),
+    excluir: (id) => del(`/locais/${id}`),
   },
 
   sessoes: {
-    async list(filtro = {}) {
-      const params = new URLSearchParams();
-      if (filtro.status) params.set("status", filtro.status);
-      if (filtro.filme_id) params.set("filme_id", filtro.filme_id);
-      const qs = params.toString();
-      return request(`/api/sessoes${qs ? `?${qs}` : ""}`);
+    listar: (filtro = {}) => {
+      const qs = new URLSearchParams();
+      if (filtro.localId) qs.set("localId", filtro.localId);
+      if (filtro.movieId) qs.set("movieId", filtro.movieId);
+      return request(`/sessoes${qs.toString() ? `?${qs}` : ""}`);
     },
-    async create(payload, setoresIniciais = []) {
-      return request("/api/sessoes", {
-        method: "POST",
-        body: JSON.stringify({ sessao: payload, setores: setoresIniciais }),
-      });
-    },
-    async update(id, payload, setoresAtualizados = null) {
-      return request(`/api/sessoes/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        body: JSON.stringify({ sessao: payload, setores: setoresAtualizados }),
-      });
-    },
-    async delete(id) {
-      return request(`/api/sessoes/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-    },
-  },
-
-  setores: {
-    async listBySessao(sessaoId) {
-      return request(`/api/setores?sessao_id=${encodeURIComponent(sessaoId)}`);
-    },
-    async listBySessoes(sessaoIds) {
-      if (!sessaoIds?.length) return [];
-      return request(`/api/setores?sessao_ids=${encodeURIComponent(sessaoIds.join(","))}`);
-    },
+    detalhe: (id) => request(`/sessoes/${id}`),
+    gestao: () => request("/sessoes/gestao"),
+    reservas: (id) => request(`/sessoes/${id}/reservas`),
+    criar: ({ movieId, locationId, startsAt }) => post("/sessoes", { movieId, locationId, startsAt }),
+    cancelar: (id, motivo) => post(`/sessoes/${id}/cancelar`, { motivo }),
   },
 
   reservas: {
-    async list(filtro = {}) {
-      const params = new URLSearchParams();
-      if (filtro.user_id) params.set("user_id", filtro.user_id);
-      if (filtro.status && filtro.status !== "todas") params.set("status", filtro.status);
-      if (filtro.busca) params.set("busca", filtro.busca);
-      const qs = params.toString();
-      return request(`/api/reservas${qs ? `?${qs}` : ""}`);
-    },
-    async criar({ sessao_id, setor_id, nome, email, quantidade }) {
-      const user = await api.auth.me();
-      if (!user) throw new Error("Entre na sua conta para concluir a reserva.");
-
-      return request("/api/reservas", {
-        method: "POST",
-        body: JSON.stringify({
-          sessao_id,
-          setor_id,
-          user_id: user.id,
-          nome,
-          email,
-          quantidade,
-        }),
-      });
-    },
-    async cancelar(reservaId) {
-      return request(`/api/reservas/${encodeURIComponent(reservaId)}/cancelar`, {
-        method: "PATCH",
-      });
-    },
+    criar: ({ sessionId, sessionAreaId, quantidade }) =>
+      post("/reservas", { sessionId, sessionAreaId, quantidade }),
+    minhas: () => request("/reservas/minhas"),
+    cancelar: (id) => post(`/reservas/${id}/cancelar`),
   },
 
-  uploads: {
-    async uploadPoster(file) {
-      const formData = new FormData();
-      formData.append("poster", file);
-      return request("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-    },
+  ingressos: {
+    validar: (sessionId, codigo) => post("/ingressos/validar", { sessionId, codigo }),
+    cancelar: (id) => post(`/ingressos/${id}/cancelar`),
+  },
+
+  avisos: {
+    listar: () => request("/avisos"),
+    marcarLido: (id) => post(`/avisos/${id}/lido`),
+  },
+
+  usuarios: {
+    listar: () => request("/usuarios"),
+    criarOperador: (dados) => post("/usuarios/operador", dados),
   },
 };

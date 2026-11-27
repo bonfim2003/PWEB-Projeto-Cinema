@@ -1,6 +1,5 @@
 import erro from "./erro.js";
 
-/** Converte para inteiro positivo ou lança 400. O JSON pode trazer números como texto. */
 export function idValido(valor, campo = "id") {
   const n = Number(valor);
   if (!Number.isInteger(n) || n < 1) throw erro(400, `Campo inválido: ${campo}`);
@@ -11,7 +10,6 @@ export const texto = (valor, max = 500) => String(valor ?? "").trim().slice(0, m
 
 export const emailValido = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-/** Aceita apenas http(s); evita javascript: e afins em links exibidos no site. */
 export function urlValida(valor) {
   if (!valor) return true;
   try {

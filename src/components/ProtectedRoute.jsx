@@ -1,32 +1,18 @@
-import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import AcessoNegado from "@/components/AcessoNegado";
 
-const DefaultFallback = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-cream">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-ink/20 border-t-ink" />
-  </div>
-);
+/**
+ * Conforto visual: esconde telas de quem não tem o papel certo.
+ * Quem protege de verdade são os middlewares auth/exigir do servidor.
+ */
+export default function ProtectedRoute({ papeis }) {
+  const { user } = useAuth();
+  const local = useLocation();
 
-export default function ProtectedRoute({
-  fallback = <DefaultFallback />,
-  unauthenticatedElement,
-}) {
-  const { isAuthenticated, isLoadingAuth, authChecked, checkUserAuth } = useAuth();
-
-  useEffect(() => {
-    if (!authChecked && !isLoadingAuth) {
-      checkUserAuth();
-    }
-  }, [authChecked, isLoadingAuth, checkUserAuth]);
-
-  if (isLoadingAuth || !authChecked) {
-    return fallback;
+  if (!user) {
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(local.pathname)}`} replace />;
   }
-
-  if (!isAuthenticated) {
-    return unauthenticatedElement;
-  }
-
+  if (papeis && !papeis.includes(user.role)) return <AcessoNegado />;
   return <Outlet />;
 }
