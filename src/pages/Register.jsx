@@ -4,7 +4,7 @@ import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2, Eye, EyeOff, Check, X } from "lucide-react";
+import { UserPlus, User, Mail, Lock, Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
@@ -16,6 +16,7 @@ const REGRAS_SENHA = [
 ];
 
 export default function Register() {
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,7 +44,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await api.auth.register({ email, password });
+      await api.auth.cadastrar({ name: nome, email, password });
       window.location.href = returnTo;
     } catch (err) {
       setError(err.message || "Não foi possível criar a conta.");
@@ -74,6 +75,27 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
+          <Label htmlFor="nome">Nome</Label>
+          <div className="relative">
+            <User
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40"
+              aria-hidden="true"
+            />
+            <Input
+              id="nome"
+              autoComplete="name"
+              autoFocus
+              placeholder="Como aparece na portaria"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className="h-12 border-2 border-ink/25 bg-cream pl-10"
+              minLength={2}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <div className="relative">
             <Mail
@@ -84,7 +106,6 @@ export default function Register() {
               id="email"
               type="email"
               autoComplete="email"
-              autoFocus
               placeholder="voce@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

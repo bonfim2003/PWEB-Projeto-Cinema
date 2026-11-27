@@ -7,16 +7,7 @@ import { LogIn, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { api } from "@/services/api";
-
-async function destinoPosLogin(returnTo) {
-  if (returnTo && returnTo !== "/") return returnTo;
-  try {
-    const usuario = await api.auth.me();
-    return usuario?.role === "admin" ? "/admin" : "/";
-  } catch {
-    return "/";
-  }
-}
+import { inicioDoPapel } from "@/lib/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -31,8 +22,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await api.auth.login({ email, password });
-      window.location.href = await destinoPosLogin(returnTo);
+      const user = await api.auth.login(email, password);
+      // cliente volta para onde estava; operador e admin vão para a área deles
+      window.location.href = user.role === "CLIENTE" && returnTo !== "/" ? returnTo : inicioDoPapel(user.role);
     } catch (err) {
       setError(err.message || "E-mail ou senha inválidos.");
     } finally {
@@ -44,12 +36,12 @@ export default function Login() {
     <AuthLayout
       icon={LogIn}
       title="Bem-vindo de volta"
-      subtitle="Entre para acompanhar suas reservas (use admin@... para painel)"
+      subtitle="Entre para reservar e ver seus códigos"
       footer={
         <>
           Ainda não tem conta?{" "}
           <Link
-            to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
+            to={"/cadastro" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
             className="font-semibold text-coral hover:underline"
           >
             Criar conta
