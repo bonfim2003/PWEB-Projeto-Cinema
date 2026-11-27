@@ -4,7 +4,7 @@ import PosterCard from "@/components/PosterCard";
 import SectionHeading from "@/components/decor/SectionHeading";
 import Marquee from "@/components/decor/Marquee";
 
-export default function FilmCarousel({ filmes }) {
+export default function FilmCarousel({ filmes, locais = [] }) {
   const trackRef = useRef(null);
 
   const scrollByCard = (direction) => {
@@ -20,8 +20,8 @@ export default function FilmCarousel({ filmes }) {
         items={[
           "cinema ao ar livre",
           "entrada gratuita",
-          "parque aurora",
-          "sextas e sábados 18h30",
+          ...locais.map((l) => l.name.toLowerCase()),
+          "um código por ingresso",
           "temporada 2026",
         ]}
       />
@@ -34,7 +34,7 @@ export default function FilmCarousel({ filmes }) {
           <SectionHeading
             eyebrow="em cartaz"
             titulo="Filmes da temporada"
-            descricao="Clássicos, musicais e ficções que definiram a década — curados para a tela grande."
+            descricao="Clássicos que definiram os anos 80, escolhidos para a tela grande. Toque no pôster para ver a próxima sessão."
             action={
               <div className="flex items-center gap-3">
                 <button

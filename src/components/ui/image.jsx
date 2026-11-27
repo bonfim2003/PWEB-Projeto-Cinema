@@ -4,7 +4,7 @@ export const Image = React.forwardRef(({ src, alt = "", className = "", fittingT
   return (
     <img
       ref={ref}
-      src={src || "/favicon.svg"}
+      src={src || "/logo.png"}
       alt={alt}
       loading="lazy"
       className={`object-cover ${className}`}

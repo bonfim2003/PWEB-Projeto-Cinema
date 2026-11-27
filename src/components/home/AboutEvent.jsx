@@ -5,23 +5,23 @@ const passos = [
   {
     numero: "01",
     icon: Ticket,
-    titulo: "Escolha a sessão",
+    titulo: "Reserve pelo site",
     texto:
-      "A programação roda de sexta a sábado, sempre às 19h30. A reserva é gratuita e garante seu lugar no setor escolhido.",
+      "Escolha a sessão e a área do espaço. Cada conta reserva até 4 ingressos por sessão, e cada ingresso ganha um código próprio.",
   },
   {
     numero: "02",
     icon: Armchair,
-    titulo: "Reserve seu setor",
+    titulo: "Chegue com o código",
     texto:
-      "O gramado é dividido em quatro setores, cada um com capacidade própria. O mapa mostra as vagas em tempo real.",
+      "Os códigos ficam em Meus ingressos. Não precisa imprimir: mostre no celular ou anote os 8 caracteres.",
   },
   {
     numero: "03",
     icon: Sparkles,
-    titulo: "Traga sua manta",
+    titulo: "A portaria confirma sua entrada",
     texto:
-      "Chegue a partir das 18h30 para escolher o melhor canto do gramado. Pipoca e bebida ficam nos food trucks do Setor D.",
+      "O operador digita o código e o sistema confirma na hora. Cada código vale uma única entrada, só na sessão reservada.",
   },
 ];
 
@@ -41,15 +41,14 @@ export default function AboutEvent() {
                 sempre.
               </h2>
               <p className="mt-5 max-w-sm text-base leading-relaxed text-ink/75">
-                O Cine Afterglow é um evento cultural gratuito realizado no
-                Parque Aurora. Nada de ingresso pago: a reserva existe só para
-                garantir que o gramado caiba todo mundo e que ninguém fique de
-                fora da sessão.
+                O Cine Pipoca é um cinema ao ar livre gratuito que circula
+                por praças e parques. A reserva online não vende nada: ela
+                organiza o encontro, para que o espaço caiba todo mundo e
+                ninguém fique de fora na hora da sessão.
               </p>
               <p className="mt-4 max-w-sm text-base leading-relaxed text-ink/75">
-                Telão inflável de 12 metros, som de cinema e uma curadoria que
-                passeia pela comédia, pelo musical e pela ficção científica dos
-                anos 80.
+                Se não puder ir, cancele até 2 horas antes: as vagas voltam na
+                hora para outra pessoa.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">

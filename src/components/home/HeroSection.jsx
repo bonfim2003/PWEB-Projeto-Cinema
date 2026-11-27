@@ -1,11 +1,10 @@
-import { Link } from "react-router-dom";
 import { ArrowUpRight, Play } from "lucide-react";
-import { heroImage, projetorImage } from "@/data/hero";
+import { heroImage } from "@/data/hero";
 import { Image } from "@/components/ui/image";
 import Tape from "@/components/decor/Tape";
 import Sticker from "@/components/decor/Sticker";
 
-export default function HeroSection({ proxima }) {
+export default function HeroSection() {
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -22,9 +21,9 @@ export default function HeroSection({ proxima }) {
               Temporada<br />2026
             </Sticker>
             <p className="max-w-[190px] text-[11px] uppercase leading-relaxed tracking-retro text-ink/60">
-              Parque Aurora
+              Praças e parques
               <br />
-              sextas e sábados · 18h30
+              da cidade
             </p>
           </div>
 
@@ -39,9 +38,9 @@ export default function HeroSection({ proxima }) {
           </h1>
 
           <p className="mt-7 max-w-md text-lg leading-relaxed text-ink/70">
-            Um mês inteiro de telão inflável, gramado aberto e clássicos
-            oitentistas. Escolha seu setor, reserve gratuitamente e venha com
-            quem você gosta.
+            Telão inflável, gramado aberto e clássicos oitentistas. Reserve
+            seu lugar pelo site, receba um código por ingresso e mostre na
+            entrada.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-5">
@@ -66,8 +65,8 @@ export default function HeroSection({ proxima }) {
           <dl className="mt-12 flex flex-wrap gap-x-10 gap-y-5 border-t-2 border-ink/15 pt-6 text-sm">
             {[
             ["Entrada", "gratuita, sempre"],
-            ["4 setores", "no gramado"],
-            ["Reserva", "pelo site"]].
+            ["Até 4 ingressos", "por sessão"],
+            ["Um código", "por pessoa"]].
             map(([term, desc]) =>
             <div key={term}>
                 <dt className="font-display text-base font-semibold text-ink">
@@ -92,45 +91,6 @@ export default function HeroSection({ proxima }) {
             </div>
           </div>
 
-          
-
-
-
-
-
-
-
-
-          
-
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          
         </div>
       </div>
     </section>);

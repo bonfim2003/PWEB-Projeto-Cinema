@@ -2,33 +2,38 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import Brand from "@/components/Brand";
-import { Menu, X, Ticket, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Ticket, LogOut, LayoutDashboard, ScanLine } from "lucide-react";
 
 const navLinks = [
   { label: "Em cartaz", href: "/#programacao" },
   { label: "Agenda", href: "/#agenda" },
-  { label: "Gratuito", href: "/#gratuito" },
-  { label: "O evento", href: "/#evento" },
+  { label: "Como funciona", href: "/#gratuito" },
+  { label: "Os locais", href: "/#evento" },
 ];
 
-export default function SiteHeader() {
-  const { user, logout } = useAuth();
-  const [menuAberto, setMenuAberto] = useState(false);
-  const isAdmin = user?.role === "admin";
+/** Atalhos de cada papel: cliente vê ingressos, operador a portaria, admin o painel. */
+function atalhosDo(role) {
+  if (role === "CLIENTE") return [{ to: "/meus-ingressos", label: "Meus ingressos", icon: Ticket, destaque: true }];
+  if (role === "OPERADOR") return [{ to: "/portaria", label: "Portaria", icon: ScanLine, destaque: true }];
+  if (role === "ADMIN")
+    return [
+      { to: "/portaria", label: "Portaria", icon: ScanLine },
+      { to: "/admin", label: "Painel", icon: LayoutDashboard, destaque: true },
+    ];
+  return [];
+}
 
-  const sair = () => {
-    setMenuAberto(false);
-    logout();
-  };
+export default function SiteHeader() {
+  const { user, sair } = useAuth();
+  const [menuAberto, setMenuAberto] = useState(false);
+  const atalhos = atalhosDo(user?.role);
 
   return (
     <header className="sticky top-0 z-40">
       <div className="bg-ink text-cream">
         <div className="mx-auto flex max-w-[1360px] items-center justify-between gap-4 px-5 py-1.5 text-[10px] uppercase tracking-retro lg:px-10">
-          <span>Temporada 2026 · Parque Aurora</span>
-          <span className="hidden sm:block">
-            Sextas e sábados · 18h30 · entrada gratuita
-          </span>
+          <span>Temporada 2026 · praças e parques da cidade</span>
+          <span className="hidden sm:block">Reserve pelo site · mostre o código na entrada</span>
           <span className="sm:hidden">Entrada gratuita</span>
         </div>
       </div>
@@ -50,30 +55,22 @@ export default function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user && (
+            {atalhos.map(({ to, label, icon: Icon, destaque }) => (
               <Link
-                to="/meus-ingressos"
-                className="hidden items-center gap-2 rounded-full border-2 border-ink bg-mustard px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-mustard/70 sm:inline-flex"
+                key={to}
+                to={to}
+                className={`hidden items-center gap-2 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold text-ink transition-colors sm:inline-flex ${
+                  destaque ? "bg-mustard hover:bg-mustard/70" : "hover:bg-ink hover:text-cream"
+                }`}
               >
-                <Ticket className="h-4 w-4" />
-                Meus ingressos
+                <Icon className="h-4 w-4" />
+                {label}
               </Link>
-            )}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="hidden items-center gap-2 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-cream sm:inline-flex"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Painel
-              </Link>
-            )}
+            ))}
 
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="hidden max-w-[130px] truncate text-xs text-ink/55 xl:block">
-                  {user.full_name || user.email}
-                </span>
+                <span className="hidden max-w-[130px] truncate text-xs text-ink/55 xl:block">{user.name}</span>
                 <button
                   type="button"
                   onClick={sair}
@@ -106,44 +103,22 @@ export default function SiteHeader() {
         </div>
 
         {menuAberto && (
-          <nav
-            className="border-t-2 border-ink bg-cream px-5 py-4 lg:hidden"
-            aria-label="Menu do site"
-          >
+          <nav className="border-t-2 border-ink bg-cream px-5 py-4 lg:hidden" aria-label="Menu do site">
             <ul className="flex flex-col divide-y divide-ink/10">
               {navLinks.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    onClick={() => setMenuAberto(false)}
-                    className="block py-3 font-display text-lg text-ink"
-                  >
+                  <a href={link.href} onClick={() => setMenuAberto(false)} className="block py-3 font-display text-lg text-ink">
                     {link.label}
                   </a>
                 </li>
               ))}
-              {user && (
-                <li>
-                  <Link
-                    to="/meus-ingressos"
-                    onClick={() => setMenuAberto(false)}
-                    className="block py-3 font-display text-lg text-ink"
-                  >
-                    Meus ingressos
+              {atalhos.map(({ to, label }) => (
+                <li key={to}>
+                  <Link to={to} onClick={() => setMenuAberto(false)} className="block py-3 font-display text-lg text-ink">
+                    {label}
                   </Link>
                 </li>
-              )}
-              {isAdmin && (
-                <li>
-                  <Link
-                    to="/admin"
-                    onClick={() => setMenuAberto(false)}
-                    className="block py-3 font-display text-lg text-ink"
-                  >
-                    Painel da produção
-                  </Link>
-                </li>
-              )}
+              ))}
             </ul>
           </nav>
         )}
