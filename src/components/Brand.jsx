@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-/** Marca do Cine Afterglow: logo + assinatura editorial. */
+/** Marca do Cine Pipoca: logo + assinatura editorial. */
 export default function Brand({ tone = "dark", compact = false, className = "" }) {
   const claro = tone === "light";
 
@@ -8,7 +8,7 @@ export default function Brand({ tone = "dark", compact = false, className = "" }
     <Link to="/" className={`group flex items-center gap-3 ${className}`}>
       <img
         src="/logo.png"
-        alt="Logo Cine Afterglow"
+        alt="Logo Cine Pipoca"
         className="h-11 w-11 shrink-0 rounded-full border-2 border-ink object-cover transition-transform duration-300 group-hover:-rotate-6"
       />
       <span className="leading-none">
@@ -17,7 +17,7 @@ export default function Brand({ tone = "dark", compact = false, className = "" }
             claro ? "text-cream" : "text-ink"
           }`}
         >
-          CINE AFTERGLOW
+          CINE PIPOCA
         </span>
         {!compact && (
           <span
