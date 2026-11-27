@@ -8,44 +8,34 @@ const ESTILOS = {
   selecionado: "border-ink bg-coral -translate-y-0.5 shadow-block-sm",
 };
 
-const ETIQUETAS = {
-  disponivel: "Disponível",
-  poucas: "Poucas vagas",
-  esgotado: "Esgotado",
-};
+const ETIQUETAS = { disponivel: "Disponível", poucas: "Poucas vagas", esgotado: "Esgotado" };
 
-function SectorTile({ setor, selecionado, onSelect }) {
-  const nivel = nivelDisponibilidade(setor);
+function AreaTile({ area, selecionado, onSelect, desabilitado }) {
+  const nivel = nivelDisponibilidade(area);
   const esgotado = nivel === "esgotado";
   const estado = selecionado ? "selecionado" : nivel;
+  const vagas = Math.max(0, Number(area.vagas) || 0);
 
   return (
     <button
       type="button"
-      disabled={esgotado}
-      onClick={() => onSelect(setor)}
+      disabled={esgotado || desabilitado}
+      onClick={() => onSelect(area)}
       aria-pressed={selecionado}
-      aria-label={`${setor.nome} — ${setor.tipo}, ${Math.max(
-        0,
-        Number(setor.vagas_disponiveis) || 0
-      )} de ${setor.capacidade_total} lugares disponíveis`}
-      className={`group relative w-full rounded-2xl border-2 p-4 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink ${ESTILOS[estado]}`}
+      aria-label={`${area.name}: ${vagas} de ${area.capacity} lugares disponíveis`}
+      className={`group relative w-full rounded-2xl border-2 p-4 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:hover:translate-y-0 ${ESTILOS[estado]}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-display text-base leading-tight text-ink">
-            {setor.nome}
-          </p>
-          <p className="text-xs uppercase tracking-retro text-ink/55">
-            {setor.tipo}
-          </p>
+          <p className="font-display text-base leading-tight text-ink">{area.name}</p>
+          {area.description && <p className="mt-1 text-xs text-ink/55">{area.description}</p>}
         </div>
         {selecionado ? (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink bg-cream">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-cream">
             <Check className="h-3.5 w-3.5 text-ink" />
           </span>
         ) : esgotado ? (
-          <X className="h-4 w-4 text-ink/40" />
+          <X className="h-4 w-4 shrink-0 text-ink/40" />
         ) : null}
       </div>
 
@@ -54,16 +44,13 @@ function SectorTile({ setor, selecionado, onSelect }) {
           <span className="font-semibold">Sem lugares</span>
         ) : (
           <>
-            <span className="font-semibold text-ink">
-              {setor.vagas_disponiveis}
-            </span>{" "}
-            de {setor.capacidade_total} lugares
+            <span className="font-semibold text-ink">{vagas}</span> de {area.capacity} lugares
           </>
         )}
       </p>
 
       <span className="mt-3 inline-flex items-center rounded-full border border-ink/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-retro text-ink/70">
-        {esgotado ? ETIQUETAS.esgotado : selecionado ? "Selecionado" : ETIQUETAS[nivel]}
+        {selecionado ? "Selecionada" : ETIQUETAS[nivel]}
       </span>
     </button>
   );
@@ -71,66 +58,38 @@ function SectorTile({ setor, selecionado, onSelect }) {
 
 const LEGENDA = [
   { label: "Disponível", classe: "bg-cream" },
-  { label: "Selecionado", classe: "bg-coral" },
+  { label: "Selecionada", classe: "bg-coral" },
   { label: "Poucas vagas", classe: "bg-mustard/70" },
   { label: "Esgotado", classe: "bg-ink/15" },
 ];
 
-export default function SectorMap({ setores, selecionadoId, onSelect }) {
-  const porTipo = (tipo) => setores.find((s) => s.tipo === tipo);
-  const frontal = porTipo("Frontal");
-  const central = porTipo("Central");
-  const gramado = porTipo("Gramado");
-  const convivencia = porTipo("Convivência");
+/** Mapa do espaço: a tela no topo e as áreas na ordem do local (a primeira fica mais perto). */
+export default function SectorMap({ areas, selecionadaId, onSelect, desabilitado = false }) {
+  const [primeira, ...demais] = areas;
 
   return (
     <div className="rounded-3xl border-2 border-ink bg-card p-5 sm:p-8">
       <div className="mx-auto max-w-sm rounded-xl border-2 border-ink bg-lagoon py-3 text-center">
-        <p className="text-[10px] uppercase tracking-retro text-ink/70">
-          Telão 12m
-        </p>
-        <p className="font-display text-sm text-ink">Tela principal</p>
+        <p className="text-[10px] uppercase tracking-retro text-ink/70">Telão inflável</p>
+        <p className="font-display text-sm text-ink">Tela</p>
       </div>
 
       <div className="mt-6 space-y-3 sm:space-y-4">
-        {frontal && (
-          <SectorTile
-            setor={frontal}
-            selecionado={selecionadoId === frontal.id}
-            onSelect={onSelect}
-          />
+        {primeira && (
+          <AreaTile area={primeira} selecionado={selecionadaId === primeira.id} onSelect={onSelect} desabilitado={desabilitado} />
         )}
-        {central && (
-          <SectorTile
-            setor={central}
-            selecionado={selecionadoId === central.id}
-            onSelect={onSelect}
-          />
+        {demais.length > 0 && (
+          <div className={`grid gap-3 sm:gap-4 ${demais.length > 1 ? "sm:grid-cols-2" : ""}`}>
+            {demais.map((area) => (
+              <AreaTile key={area.id} area={area} selecionado={selecionadaId === area.id} onSelect={onSelect} desabilitado={desabilitado} />
+            ))}
+          </div>
         )}
-        <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr] sm:gap-4">
-          {gramado && (
-            <SectorTile
-              setor={gramado}
-              selecionado={selecionadoId === gramado.id}
-              onSelect={onSelect}
-            />
-          )}
-          {convivencia && (
-            <SectorTile
-              setor={convivencia}
-              selecionado={selecionadoId === convivencia.id}
-              onSelect={onSelect}
-            />
-          )}
-        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t-2 border-ink/10 pt-4">
         {LEGENDA.map((item) => (
-          <span
-            key={item.label}
-            className="flex items-center gap-2 text-[11px] uppercase tracking-retro text-ink/55"
-          >
+          <span key={item.label} className="flex items-center gap-2 text-[11px] uppercase tracking-retro text-ink/55">
             <span className={`h-3 w-3 rounded-sm border border-ink ${item.classe}`} />
             {item.label}
           </span>
